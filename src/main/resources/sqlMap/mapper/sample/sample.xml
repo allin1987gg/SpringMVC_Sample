@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+<![CDATA[
+SELECT * FROM H01_FAQ WHERE 1=1 AND [NATIONAL] = #{national} AND DELSIGN <> 'Y'
+]]>
+
+<foreach collection="arr" item="item" index="index" separator=";">  index 从0 开始
+ insert into test (code,codenm) values
+
+(#{item.code},${index}+1)
+</foreach>
+
+=====================================一对多查询===================================
+<resultMap type="kr.co.square1.syrup.bean.Person" id="personreSultMap">
+<id column="p_id" property="id"/>
+<result column="name" property="name"/>
+<collection property="orderList" ofType="kr.co.square1.syrup.bean.Orders" column="p_id">
+    <id column="o_id" property="id"/>
+    <result column="price" property="price"/>
+</collection>
+
+</resultMap>
+
+<select id="testSelectPersonFetchOrder" parameterType="int" resultMap="personreSultMap" >
+    select p.*,o.* from person p,orders o where o.p_id=p.p_id and p.p_id=#{id}
+</select>
+=====================================一对多查询===================================
+
+
+-->
+<mapper namespace="com.domain.sample.dao.SampleDao">
+
+    <select id="getSample" resultType="map">
+        select * from test_table
+    </select>
+
+    <select id="getSampleVo" resultType="sampleVo">
+        select * from test_table
+    </select>
+
+    <insert id="insertSuccess">
+      insert into test_table values('3','')
+    </insert>
+
+    <insert id="insertFail">
+      insert into test_table2 value('1',NULL)
+    </insert>
+
+    <!--	order="BEFORE" /"AFTER" 执行insert语句之前或者之后 获取 SEQNO的值
+            SEQNO 的值 赋给了 parameterType 里面
+    -->
+    <!--
+            CREATE TABLE [dbo].[Z_TEST]
+            (
+              [A] [int] IDENTITY(1,1) NOT NULL, 自增
+              [B] [nchar](10)  NULL
+            )
+
+            Cannot insert explicit value for identity column in table 'Z_TEST' when IDENTITY_INSERT is set to OFF.   报错
+            SET IDENTITY_INSERT z_test on;
+            INSERT INTO z_test(A,B) values(6,'A');
+            SET IDENTITY_INSERT z_test off;
+    -->
+    <!--<insert id="insert_Test" parameterType="map" useGeneratedKeys="true" keyProperty="SEQNO" keyColumn="SEQNO">-->
+        <!--<selectKey resultType="java.lang.String" keyProperty="SEQNO" order="BEFORE" >-->
+            <!--<if test="i=='a' and i =='' and i != null">-->
+
+            <!--</if>-->
+            <!--<choose>-->
+                <!--<when test="i=='a'">-->
+
+                <!--</when>-->
+                <!--<when test="i=='b'">-->
+
+                <!--</when>-->
+                <!--<otherwise>-->
+
+                <!--</otherwise>-->
+            <!--</choose>-->
+            <!--SELECT ISNULL(MAX(SEQ),0)+1 AS SEQNO FROM S09_ERROR-->
+            <!--WHERE YYYYMMDD = CONVERT(VARCHAR(8),GETDATE(),112)-->
+        <!--</selectKey>-->
+        <!--SET IDENTITY_INSERT z_test on;-->
+        <!--INSERT INTO z_test(A,B) values(${SEQNO},'A');-->
+        <!--SET IDENTITY_INSERT z_test off;-->
+    <!--</insert>-->
+
+</mapper>
+
+
+

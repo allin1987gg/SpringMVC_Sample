@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+	http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd">
+
+	<context:component-scan base-package="com.domain.*">
+		<!--Spring MVC @Transactional注解方式事务失效的解决办法
+			blog.csdn.net/z69183787/article/details/37819831-->
+		<!--<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Service" />-->
+	</context:component-scan>
+
+	<!--	ResponseBody 返回 字符串时 出现问号 解决
+			http://blog.csdn.net/u011848397/article/details/52097745
+	-->
+	<mvc:annotation-driven >
+		<!-- 消息转换器 -->
+		<mvc:message-converters register-defaults="true">
+			<bean class="org.springframework.http.converter.StringHttpMessageConverter">
+				<property name="supportedMediaTypes" value="text/html;charset=UTF-8"/>
+			</bean>
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+
+	<!--	======================================Spring MVC静态资源处理	-->
+	<mvc:default-servlet-handler/>
+	<!--	======================================Spring MVC静态资源处理	-->
+
+	<!-- DispatcherServlet Context: defines this servlet's request-processing infrastructure -->
+
+	<!-- Enables the Spring MVC @Controller programming model -->
+
+	<!-- Handles HTTP GET requests for /resources/** by efficiently serving up static resources in the ${webappRoot}/resources directory -->
+	<mvc:resources mapping="/resources/**" location="/resources/" />
+
+	<!-- Resolves views selected for rendering by @Controllers to .jsp resources in the /WEB-INF/views directory -->
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/views/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+
+	<!--	======================================拦截器	-->
+	<mvc:interceptors>
+		<mvc:interceptor>
+			<mvc:mapping path="/admin/*" />
+			<bean class="com.domain.common.util.CommonIntercepter" />  <!--CommonIntercepter-->
+		</mvc:interceptor>
+		<!-- 可以追加 拦截器 -->
+		<!--<interceptor>-->
+		<!--<mapping path="/admin/board_write"/>-->
+		<!--<beans:bean class="com.spring.interceptor.AdminInterCeptor"/>-->
+		<!--</interceptor>-->
+		<!-- 可以追加 拦截器 -->
+
+	</mvc:interceptors>
+	<!--	======================================拦截器	-->
+
+	<!--	========================================= DB connection =========================================	-->
+	<bean id="configProperties" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath:config/properties/jdbc.properties</value>
+			</list>
+		</property>
+	</bean>
+
+
+	<!-- ====================================== 1 DBMS Connection start ====================================== -->
+	<bean id="myDatasourceSpied" name="myDatasourceSpied" class="org.apache.commons.dbcp.BasicDataSource">
+		<!--  ========================== maven add spring-jdbc =================================== -->
+		<property name="driverClassName" value="${jdbc.driverClassName}"></property>
+		<property name="url" value="${jdbc.url}"></property>
+		<property name="username" value="${jdbc.username}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+	</bean>
+
+	<bean id="myDatasource" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+		<constructor-arg ref="myDatasourceSpied"></constructor-arg>
+		<property name="logFormatter">
+			<bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+				<property name="loggingType" value="MULTI_LINE" ></property>
+				<property name="sqlPrefix" value="########## SQL #########:  "></property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="myDatasource" />
+	</bean>
+
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="myDatasource"></property>
+		<property name="configLocation" value="classpath:sqlMap/config/mapper-config.xml" />
+		<property name="mapperLocations" value="classpath:sqlMap/mapper/**/*.xml"></property>
+	</bean>
+
+	<bean id="SAMPLE" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" ref="sqlSessionFactory"></constructor-arg>
+	</bean>
+	<!-- ====================================== 1 DBMS Connection start ====================================== -->
+	<!--	========================================= DB connection =========================================	-->
+
+	<!-- ======================================AOP setting for Logging -->
+	<!--	xmlns:aop="http://www.springframework.org/schema/aop"
+			http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd	-->
+	<bean id="logAspect" class="com.domain.common.util.aop.LoggingAspect" />
+	<!-- AOP setting for Logging Before method call  -->
+
+	<aop:config>
+		<aop:aspect id="aspectLoggging" ref="logAspect">
+			<aop:pointcut id="pointCutSet" expression="execution(* com.domain..*.service..*(..)) " />
+			<aop:before method="logBefore" pointcut-ref="pointCutSet" />
+		</aop:aspect>
+	</aop:config>
+
+	<!-- ======================================AOP setting for Logging -->
+
+	<!--	============================ return Json ============================	-->
+	<!--
+		spring版本为3.1.1时
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-mapper-asl</artifactId>
+			<version>1.9.13</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-core-asl</artifactId>
+			<version>1.9.13</version>
+		</dependency>
+	-->
+	<!--
+		spring版本为4.3.7时
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>2.8.6</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.8.6</version>
+		</dependency>
+
+		spring版本为4.3.7时
+		2.9.0 +
+	-->
+
+	<!--<bean name="jsonView" class="org.springframework.web.servlet.view.json.MappingJacksonJsonView"></bean>&lt;!&ndash;	spring版本为3.1.1时&ndash;&gt;-->
+	<bean name="defaultJsonView" class="org.springframework.web.servlet.view.json.MappingJackson2JsonView"></bean><!--	spring版本为4.3.7 / 5.0.5 时-->
+	<!--	============================ return Json ============================	-->
+
+	<!--<beans:bean id="mappingJacksonHttpMessageConverter"-->
+	<!--class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">-->
+	<!--<beans:property name="supportedMediaTypes">-->
+	<!--<beans:list>-->
+	<!--<beans:value>text/html;charset=UTF-8</beans:value>-->
+	<!--</beans:list>-->
+	<!--</beans:property>-->
+	<!--</beans:bean>-->
+
+	<!--<beans:bean-->
+	<!--class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">-->
+	<!--<beans:property name="messageConverters">-->
+	<!--<beans:list>-->
+	<!--&lt;!&ndash;<beans:bean class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter"></beans:bean>&ndash;&gt;-->
+	<!--<beans:ref bean="mappingJacksonHttpMessageConverter"/>-->
+	<!--</beans:list>-->
+	<!--</beans:property>-->
+	<!--</beans:bean>-->
+
+	<!--<beans:bean id="mappingJacksonHttpMessageConverter"-->
+	<!--class="org.springframework.http.converter.StringHttpMessageConverter">-->
+	<!--<beans:property name="supportedMediaTypes">-->
+	<!--<beans:list>-->
+	<!--<beans:value>text/html;charset=UTF-8</beans:value>-->
+	<!--&lt;!&ndash;<beans:value>application/json;charset=UTF-8</beans:value>&ndash;&gt;-->
+	<!--</beans:list>-->
+	<!--</beans:property>-->
+	<!--</beans:bean>-->
+
+	<!--<beans:bean-->
+	<!--class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">-->
+	<!--<beans:property name="messageConverters">-->
+	<!--<beans:list>-->
+	<!--&lt;!&ndash;<beans:bean class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter"></beans:bean>&ndash;&gt;-->
+	<!--<beans:ref bean="mappingJacksonHttpMessageConverter"/>-->
+	<!--</beans:list>-->
+	<!--</beans:property>-->
+	<!--</beans:bean>-->
+
+
+	<!--  =======================================定时执行任务====================================  -->
+	<!-- 工作的bean -->
+	<bean id="myJob" class="com.domain.scheduler.TimedTask" />
+
+	<!-- job的配置开始 -->
+	<bean id="myJobDetail"
+		  class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="myJob" />
+		</property>
+		<property name="targetMethod">
+			<value>execute</value>
+		</property>
+	</bean>
+	<!-- job的配置结束 -->
+
+
+	<!-- 调度的配置开始 -->
+	<bean id="crontestJobTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail">
+			<ref bean="myJobDetail" />
+		</property>
+		<property name="cronExpression">
+			<value>* * * * * ?</value>
+		</property>
+	</bean>
+	<!-- 调度的配置结束 -->
+
+
+	<!-- 启动触发器的配置开始 -->
+	<bean name="startQuertz" lazy-init="false" autowire="no"
+		  class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<!--<ref bean="crontestJobTrigger" />-->
+				<!--<ref bean="crontestJobTrigger" />-->
+
+			</list>
+		</property>
+	</bean>
+	<!-- 启动触发器的配置结束 -->
+	<!--  =======================================定时执行任务====================================  -->
+</beans>

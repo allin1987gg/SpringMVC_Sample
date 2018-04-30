@@ -1,0 +1,74 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+          http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://www.springframework.org/schema/security
+          http://www.springframework.org/schema/security/spring-security.xsd">
+<!--
+spring security 教程
+http://www.iteye.com/blogs/subjects/spring_security
+-->
+    <!--<security:http security="none" pattern="/security/login" />-->
+    <!--<security:http security="none" pattern="/security/checklogin" />-->
+    <!--<security:http auto-config="true">-->
+        <!--<security:form-login login-page="/security/login"-->
+                             <!--login-processing-url="/checklogin" username-parameter="username"-->
+                             <!--password-parameter="password"-->
+                             <!--default-target-url="/security"-->
+                             <!--always-use-default-target="false"-->
+                             <!--/>-->
+        <!--&lt;!&ndash;authentication-success-handler-ref="authSuccess"&ndash;&gt;-->
+                             <!--&lt;!&ndash;always-use-default-target="true"&ndash;&gt;-->
+        <!--&lt;!&ndash;“java.lang.IllegalArgumentException: Failed to evaluate expression ‘ROLE_USER’”报错的解决-->
+            <!--https://www.cnblogs.com/fan-yuan/p/6248061.html-->
+        <!--&ndash;&gt;-->
+        <!--<security:csrf disabled="true"/>-->
+        <!--<security:intercept-url pattern="/security/**" access="hasRole('ROLE_USER')" />-->
+    <!--</security:http>-->
+
+    <!--&lt;!&ndash; 认证成功后的处理类 &ndash;&gt;-->
+    <!--<bean id="authSuccess" class="com.domain.common.util.security.AuthenticationSuccessHandlerImpl"/>-->
+
+
+    <!--<security:authentication-manager>-->
+        <!--<security:authentication-provider>-->
+            <!--&lt;!&ndash;<security:user-service properties="classpath:/config/properties/users.properties"/>&ndash;&gt;-->
+            <!--<security:user-service>-->
+                <!--<security:user name="user" password="user" authorities="ROLE_USER"/>-->
+                <!--<security:user name="admin" password="admin" authorities="ROLE_USER, ROLE_ADMIN"/>-->
+            <!--</security:user-service>-->
+        <!--</security:authentication-provider>-->
+    <!--</security:authentication-manager>-->
+
+
+    <security:http security="none" pattern="/security/login" />
+    <security:http auto-config="true">
+        <security:form-login login-page="/security/login"
+                             username-parameter="username"
+                             password-parameter="password"
+                             login-processing-url="/checklogin"
+                             default-target-url="/security"
+                             always-use-default-target="false"
+        />
+        <!--authentication-success-handler-ref="authSuccess"-->
+        <!--always-use-default-target="true"-->
+        <!--“java.lang.IllegalArgumentException: Failed to evaluate expression ‘ROLE_USER’”报错的解决
+            https://www.cnblogs.com/fan-yuan/p/6248061.html
+        -->
+        <security:csrf disabled="true"/>
+        <security:intercept-url pattern="/security/**" access="hasRole('ROLE_USER')" />
+    </security:http>
+
+    <bean id="userDetailsService" class="com.domain.common.util.security.CustomerUserService"/>
+
+    <bean id ="TCustomerAuthenticationProvider" class="com.domain.common.util.security.CustomerAuthenticationProvider">
+        <property name="userDetailsService" ref="userDetailsService"></property>
+    </bean>
+
+    <security:authentication-manager alias="testingAuthenticationManager">
+        <security:authentication-provider ref="TCustomerAuthenticationProvider" />
+    </security:authentication-manager>
+
+
+</beans>
